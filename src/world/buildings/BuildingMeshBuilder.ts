@@ -1,39 +1,95 @@
 import * as THREE from 'three';
 import type { BuildingTypeDef } from './buildingTypes';
+import { createSeededRandom } from './seededRandom';
 
 const DOOR_COLOR = '#8a5a44';
-const WINDOW_COLOR = '#bde0fe';
+const WINDOW_PANE_COLOR = '#bde0fe';
+const WINDOW_FRAME_COLOR = '#5f7d95'; // darker than the pane — reads as mullions between panes
 
-/**
- * Walls: an extruded rectangular footprint with bevel — per Build Spec
- * ("ผนัง/หลังคาใช้ ExtrudeGeometry แบบมี Bevel"), giving the vertical
- * corners a soft, rounded edge instead of a sharp primitive-box look.
- */
-function buildWalls(type: BuildingTypeDef): THREE.Mesh {
-  const halfW = type.width / 2;
-  const halfD = type.depth / 2;
+/** CORRECTION (Clay style): rounded-rectangle footprint via 4 arced corners instead of sharp lineTo corners. */
+function createRoundedRectShape(width: number, depth: number, cornerRadius: number): THREE.Shape {
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  const r = Math.min(cornerRadius, halfW, halfD); // never let the radius exceed the shape itself
 
   const shape = new THREE.Shape();
-  shape.moveTo(-halfW, -halfD);
-  shape.lineTo(halfW, -halfD);
-  shape.lineTo(halfW, halfD);
-  shape.lineTo(-halfW, halfD);
+  shape.moveTo(-halfW + r, -halfD);
+  shape.lineTo(halfW - r, -halfD);
+  shape.absarc(halfW - r, -halfD + r, r, -Math.PI / 2, 0, false);
+  shape.lineTo(halfW, halfD - r);
+  shape.absarc(halfW - r, halfD - r, r, 0, Math.PI / 2, false);
+  shape.lineTo(-halfW + r, halfD);
+  shape.absarc(-halfW + r, halfD - r, r, Math.PI / 2, Math.PI, false);
+  shape.lineTo(-halfW, -halfD + r);
+  shape.absarc(-halfW + r, -halfD + r, r, Math.PI, 1.5 * Math.PI, false);
   shape.closePath();
+  return shape;
+}
+
+/** CORRECTION (Clay style): thicker, smoother bevel — shared by walls and the flat roof. */
+const CLAY_EXTRUDE_SETTINGS = {
+  bevelEnabled: true,
+  bevelThickness: 0.18,
+  bevelSize: 0.15,
+  bevelSegments: 4,
+  curveSegments: 4,
+};
+
+/** CORRECTION (Clay style): matte-ish, faintly satin surface — not a shiny plastic look. */
+function createClayMaterial(color: THREE.Color | string): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.55,
+    metalness: 0,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.5,
+  });
+}
+
+/**
+ * CORRECTION (Clay style): each building instance gets a small random
+ * hue/saturation/lightness jitter around its type's base color, using the
+ * same seeded RNG the rest of the project already uses — so it stays
+ * deterministic (Phase 3b AC #5 still applies) while no two buildings of
+ * the same type are perfectly identical, like hand-made clay pieces.
+ */
+function jitterColor(baseHexColor: string, random: () => number): THREE.Color {
+  const base = new THREE.Color(baseHexColor);
+  const hsl = { h: 0, s: 0, l: 0 };
+  base.getHSL(hsl);
+
+  const hueJitter = (random() - 0.5) * 0.03;
+  const satJitter = (random() - 0.5) * 0.16;
+  const lightJitter = (random() - 0.5) * 0.14;
+
+  const jittered = new THREE.Color();
+  jittered.setHSL(
+    (hsl.h + hueJitter + 1) % 1,
+    THREE.MathUtils.clamp(hsl.s + satJitter, 0, 1),
+    THREE.MathUtils.clamp(hsl.l + lightJitter, 0.05, 0.95),
+  );
+  return jittered;
+}
+
+/**
+ * Walls: a rounded-rectangle footprint, extruded with a thick, smooth bevel
+ * — per Build Spec + Clay-style Correction. `wallColor` is the already
+ * per-instance-jittered color (see buildBuildingMesh).
+ */
+function buildWalls(type: BuildingTypeDef, wallColor: THREE.Color): THREE.Mesh {
+  const cornerRadius = 0.18 * Math.min(type.width, type.depth); // 18%, within the requested 15-20% range
+  const shape = createRoundedRectShape(type.width, type.depth, cornerRadius);
 
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: type.wallHeight,
-    bevelEnabled: true,
-    bevelThickness: 0.04,
-    bevelSize: 0.04,
-    bevelSegments: 2,
-    curveSegments: 1,
+    ...CLAY_EXTRUDE_SETTINGS,
   });
   // The shape lives in local XY; extrusion runs along local Z. Standing it
   // up (-90° about X) turns that extrusion into world-vertical (Y), with
   // the footprint flat on the XZ ground plane.
   geometry.rotateX(-Math.PI / 2);
 
-  const material = new THREE.MeshStandardMaterial({ color: type.wallColor, roughness: 0.85 });
+  const material = createClayMaterial(wallColor);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -44,12 +100,13 @@ function buildWalls(type: BuildingTypeDef): THREE.Mesh {
 /**
  * Roof: 'pyramid' uses a 4-sided cone — the correct, simple primitive for a
  * tapering form (a plain ExtrudeGeometry can't taper to a point, since it
- * keeps a constant cross-section along the extrusion, so it's reserved for
- * the genuinely flat 'flat' roof case below, where it applies exactly as
- * specified). Both remain fully procedural — no external assets either way.
+ * keeps a constant cross-section along the extrusion). The Clay-style
+ * rounded-corner treatment applies only to the 'flat' roof below, which
+ * genuinely is an extruded shape (per Correction scope: "buildRoof()
+ * (ส่วน flat roof)"). Both use the new Clay material either way.
  */
-function buildRoof(type: BuildingTypeDef): THREE.Mesh {
-  const material = new THREE.MeshStandardMaterial({ color: type.roofColor, roughness: 0.8 });
+function buildRoof(type: BuildingTypeDef, roofColor: THREE.Color): THREE.Mesh {
+  const material = createClayMaterial(roofColor);
 
   if (type.roofStyle === 'pyramid') {
     const baseRadius = (Math.max(type.width, type.depth) / 2) * 1.12; // slight eave overhang
@@ -62,23 +119,15 @@ function buildRoof(type: BuildingTypeDef): THREE.Mesh {
     return mesh;
   }
 
-  // Flat roof: a genuinely flat slab — this one really is a simple
-  // ExtrudeGeometry with bevel, exactly per spec.
-  const halfW = (type.width / 2) * 1.08;
-  const halfD = (type.depth / 2) * 1.08;
-  const shape = new THREE.Shape();
-  shape.moveTo(-halfW, -halfD);
-  shape.lineTo(halfW, -halfD);
-  shape.lineTo(halfW, halfD);
-  shape.lineTo(-halfW, halfD);
-  shape.closePath();
+  // Flat roof: a genuinely flat slab — this one really is a rounded-corner
+  // ExtrudeGeometry with the Clay bevel, exactly per spec/correction.
+  const halfW = type.width * 1.08;
+  const halfD = type.depth * 1.08;
+  const cornerRadius = 0.18 * Math.min(type.width, type.depth) * 1.08;
+  const shape = createRoundedRectShape(halfW, halfD, cornerRadius);
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: type.roofHeight,
-    bevelEnabled: true,
-    bevelThickness: 0.03,
-    bevelSize: 0.03,
-    bevelSegments: 2,
-    curveSegments: 1,
+    ...CLAY_EXTRUDE_SETTINGS,
   });
   geometry.rotateX(-Math.PI / 2);
   const mesh = new THREE.Mesh(geometry, material);
@@ -89,71 +138,128 @@ function buildRoof(type: BuildingTypeDef): THREE.Mesh {
   return mesh;
 }
 
-/**
- * A flat colored plane pressed just outside a wall face — the cheap,
- * stylized-toy way to read as a door/window without needing boolean/CSG
- * cutouts into the wall geometry (no CSG library is available without
- * adding a new dependency, which Out-of-Scope rules for this phase forbid).
- */
-function buildAccentPlane(
-  width: number,
-  height: number,
-  color: string,
-  wallHalfExtentAlongFacing: number,
-  facing: 'north' | 'south' | 'east' | 'west',
-  yCenter: number,
-): THREE.Mesh {
-  const geometry = new THREE.PlaneGeometry(width, height);
-  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide });
-  const mesh = new THREE.Mesh(geometry, material);
+type Facing = 'north' | 'south' | 'east' | 'west';
 
-  const epsilon = 0.03; // sit just proud of the wall face to avoid z-fighting
+/**
+ * Positions and orients `mesh` flush against one wall face. `inPlaneOffset`
+ * shifts it sideways along that wall (world X for north/south faces, world
+ * Z for east/west faces) — used to lay out the window grid's 2x2 cells;
+ * pass 0 for a single centered element like the door.
+ */
+function positionOnWall(
+  mesh: THREE.Object3D,
+  facing: Facing,
+  wallHalfExtent: number,
+  yCenter: number,
+  inPlaneOffset: number,
+  epsilon: number,
+): void {
   switch (facing) {
     case 'south':
-      mesh.position.set(0, yCenter, -wallHalfExtentAlongFacing - epsilon);
+      mesh.position.set(inPlaneOffset, yCenter, -wallHalfExtent - epsilon);
       mesh.rotation.y = Math.PI;
       break;
     case 'north':
-      mesh.position.set(0, yCenter, wallHalfExtentAlongFacing + epsilon);
+      mesh.position.set(inPlaneOffset, yCenter, wallHalfExtent + epsilon);
       break;
     case 'east':
-      mesh.position.set(wallHalfExtentAlongFacing + epsilon, yCenter, 0);
+      mesh.position.set(wallHalfExtent + epsilon, yCenter, inPlaneOffset);
       mesh.rotation.y = Math.PI / 2;
       break;
     case 'west':
-      mesh.position.set(-wallHalfExtentAlongFacing - epsilon, yCenter, 0);
+      mesh.position.set(-wallHalfExtent - epsilon, yCenter, inPlaneOffset);
       mesh.rotation.y = -Math.PI / 2;
       break;
   }
+}
+
+/**
+ * A flat colored plane pressed just outside a wall face — the cheap,
+ * stylized-toy way to read as a door without needing boolean/CSG cutouts
+ * into the wall geometry (no CSG library is available without adding a new
+ * dependency, which Out-of-Scope rules for this phase forbid).
+ */
+function buildAccentPlane(width: number, height: number, color: string, wallHalfExtent: number, facing: Facing, yCenter: number): THREE.Mesh {
+  const geometry = new THREE.PlaneGeometry(width, height);
+  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geometry, material);
+  positionOnWall(mesh, facing, wallHalfExtent, yCenter, 0, 0.03);
   return mesh;
 }
 
 /**
- * Builds one building: walls + roof + 1 door + `windowCount` windows.
+ * CORRECTION (Clay style): windows are now a 2x2 grid of small panes with a
+ * slightly-recessed darker frame plane behind them (visible through the
+ * gaps between panes as mullions), instead of one single plane.
+ */
+function buildWindowGrid(width: number, height: number, wallHalfExtent: number, facing: Facing, yCenter: number): THREE.Group {
+  const group = new THREE.Group();
+
+  const frame = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshStandardMaterial({ color: WINDOW_FRAME_COLOR, roughness: 0.7, side: THREE.DoubleSide }),
+  );
+  positionOnWall(frame, facing, wallHalfExtent, yCenter, 0, 0.025); // sits behind the panes
+  frame.name = 'window-frame';
+  group.add(frame);
+
+  const paneWidth = (width / 2) * 0.82; // < half-width, so the frame shows through as a gap between panes
+  const paneHeight = (height / 2) * 0.82;
+  const hOffset = width / 4;
+  const vOffset = height / 4;
+  const cellOffsets: Array<[number, number]> = [
+    [-hOffset, vOffset],
+    [hOffset, vOffset],
+    [-hOffset, -vOffset],
+    [hOffset, -vOffset],
+  ];
+
+  cellOffsets.forEach(([cellH, cellV], i) => {
+    const pane = new THREE.Mesh(
+      new THREE.PlaneGeometry(paneWidth, paneHeight),
+      new THREE.MeshStandardMaterial({ color: WINDOW_PANE_COLOR, roughness: 0.5, side: THREE.DoubleSide }),
+    );
+    positionOnWall(pane, facing, wallHalfExtent, yCenter + cellV, cellH, 0.045); // proud of the frame
+    pane.name = `window-pane-${i}`;
+    group.add(pane);
+  });
+
+  return group;
+}
+
+/**
+ * Builds one building: walls + roof + 1 door + `windowCount` window grids.
  * Everything is in "building-local" space — door always faces local
  * "south" by convention. This doesn't need to correspond to any world
  * direction: Placement applies its own random yaw per building, so the
  * whole thing just needs to be internally consistent, which it is.
+ *
+ * `colorSeed` drives the per-instance Clay color jitter (Correction) —
+ * pass the same seed to get the same colors every time (Phase 3b AC #5).
  */
-export function buildBuildingMesh(type: BuildingTypeDef): THREE.Group {
+export function buildBuildingMesh(type: BuildingTypeDef, colorSeed = 0): THREE.Group {
   const group = new THREE.Group();
   group.name = `building-${type.id}`;
 
-  const walls = buildWalls(type);
-  const roof = buildRoof(type);
+  const colorRandom = createSeededRandom(colorSeed);
+  const wallColor = jitterColor(type.wallColor, colorRandom);
+  const roofColor = jitterColor(type.roofColor, colorRandom);
+
+  const walls = buildWalls(type, wallColor);
+  const roof = buildRoof(type, roofColor);
   group.add(walls, roof);
 
   const door = buildAccentPlane(type.doorWidth, type.doorHeight, DOOR_COLOR, type.depth / 2, 'south', type.doorHeight / 2);
   door.name = 'door';
   group.add(door);
 
-  const windowFacings: Array<'north' | 'east' | 'west'> = ['north', 'east', 'west'];
+  const windowFacings: Facing[] = ['north', 'east', 'west'];
   for (let i = 0; i < type.windowCount; i++) {
     const facing = windowFacings[i % windowFacings.length];
     const halfExtent = facing === 'north' ? type.depth / 2 : type.width / 2;
-    const windowMesh = buildAccentPlane(type.windowWidth, type.windowHeight, WINDOW_COLOR, halfExtent, facing, type.wallHeight * 0.55);
-    windowMesh.name = `window-${i}`;
-    group.add(windowMesh);
+    const windowGroup = buildWindowGrid(type.windowWidth, type.windowHeight, halfExtent, facing, type.wallHeight * 0.55);
+    windowGroup.name = `window-${i}`;
+    group.add(windowGroup);
   }
 
   return group;

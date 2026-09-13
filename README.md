@@ -9,12 +9,14 @@ required), mobile-first for iPhone/iPad, and also playable on desktop.
 
 ## Status
 
-**Phase 3b — Buildings.** The village finally looks like a village: 9
-procedurally-built buildings (3 types — small house, large house, shop)
-placed inside the residential/shop zones with a seeded RNG, respecting
-zone boundaries, road clearance, and inter-building spacing. Every building
-has bevel-edged walls, a roof (pyramid or flat), a door, and window(s) —
-never an empty box. Reload the page and the layout is identical every time.
+**Phase 3b — Buildings** (Clay-render style). 8 procedurally-built
+buildings (3 types — small house, large house, shop) with rounded-corner,
+thick-bevel walls, a soft matte-clearcoat material, per-instance color
+variation, and 2×2 window panes with a frame. Lighting is rebalanced for a
+softer, more diffuse "studio" look. Placed inside the residential/shop
+zones with a seeded RNG, respecting zone boundaries, road clearance, and
+inter-building spacing — reload the page and the layout is identical every
+time.
 
 <details>
 <summary>Phase 3a — Modular Roads (done)</summary>

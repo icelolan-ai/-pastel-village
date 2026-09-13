@@ -172,7 +172,10 @@ export function createPlaceholder(): THREE.Mesh {
 }
 
 export function createLights(): THREE.Object3D[] {
-  const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+  // CORRECTION (Clay style): reduced ~17% (from 2.4) so shadows read softer,
+  // less like harsh direct sunlight — paired with the HemisphereLight boost
+  // below.
+  const sun = new THREE.DirectionalLight(0xffffff, 2.0);
   sun.position.set(12, 18, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -185,7 +188,9 @@ export function createLights(): THREE.Object3D[] {
   sun.shadow.bias = -0.0015;
   sun.name = 'SunLight';
 
-  const hemi = new THREE.HemisphereLight(0xffe6f2, 0xbdeecb, 1.1);
+  // CORRECTION (Clay style): increased ~27% (from 1.1) to fill shadows more,
+  // matching the soft, diffuse "studio light" look of a real clay render.
+  const hemi = new THREE.HemisphereLight(0xffe6f2, 0xbdeecb, 1.4);
   hemi.name = 'AmbientHemisphere';
 
   return [sun, hemi];

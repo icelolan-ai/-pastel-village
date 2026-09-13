@@ -8,6 +8,8 @@ export interface BuildingPlacement {
   typeId: BuildingTypeId;
   position: [x: number, z: number];
   rotationY: number; // radians
+  /** CORRECTION (Clay style): drives buildBuildingMesh's per-instance color jitter. Drawn from the same seeded stream, so it stays deterministic. */
+  colorSeed: number;
 }
 
 /**
@@ -124,7 +126,8 @@ export function placeBuildingsInZone(
       if (overlapsOther) continue;
 
       const rotationY = random() * Math.PI * 2;
-      const placement: BuildingPlacement = { typeId, position: [x, z], rotationY };
+      const colorSeed = Math.floor(random() * 1_000_000_000);
+      const placement: BuildingPlacement = { typeId, position: [x, z], rotationY, colorSeed };
       newPlacements.push(placement);
       allPlacements.push(placement);
       break; // this slot is filled, move to the next one
