@@ -158,15 +158,8 @@ export class CameraController {
     // Move the target along the camera's local right/forward-on-ground axes
     // so panning always feels screen-relative regardless of the fixed angle.
     const panSpeed = this.distance * 0.0016;
-
-    const right = new THREE.Vector3();
-    this.camera.getWorldDirection(right);
-    right.set(right.z, 0, -right.x).normalize(); // perpendicular to view dir, on ground plane
-
-    const forward = new THREE.Vector3(Math.sin(this.azimuth), 0, Math.cos(this.azimuth)).normalize();
-
-    this.target.addScaledVector(right, -dxPixels * panSpeed);
-    this.target.addScaledVector(forward, dyPixels * panSpeed);
+    const delta = computePanWorldDelta(dxPixels, dyPixels, this.camera, this.azimuth, panSpeed);
+    this.target.add(delta);
 
     this.target.x = THREE.MathUtils.clamp(this.target.x, this.panBounds.minX, this.panBounds.maxX);
     this.target.z = THREE.MathUtils.clamp(this.target.z, this.panBounds.minZ, this.panBounds.maxZ);
@@ -189,4 +182,38 @@ export class CameraController {
     this.camera.position.copy(this.target).add(offset);
     this.camera.lookAt(this.target);
   }
+}
+
+/**
+ * CORRECTION (Phase 2 revision): computes how far the pan target should
+ * move in world space for a screen-space drag of (dxPixels, dyPixels), so
+ * the ground appears to be dragged along with the pointer — drag right,
+ * the world moves right with your finger, like a map app. Exported as a
+ * pure function (no DOM/camera-controller state) so pan *direction* can be
+ * unit-tested directly instead of only checking that `target` changed.
+ *
+ * Bug history: the original Phase 1/2 implementation used
+ * `-dxPixels * right + dyPixels * forward`, which is the exact negation of
+ * the correct delta on both axes (confirmed by hand-deriving the camera's
+ * true local right/up axes from its azimuth/polar orbit angles) — so the
+ * scene visually panned opposite the drag on both X and Y. The fix flips
+ * both signs: `dxPixels * right - dyPixels * forward`.
+ */
+export function computePanWorldDelta(
+  dxPixels: number,
+  dyPixels: number,
+  camera: THREE.PerspectiveCamera,
+  azimuth: number,
+  panSpeed: number,
+): THREE.Vector3 {
+  const right = new THREE.Vector3();
+  camera.getWorldDirection(right);
+  right.set(right.z, 0, -right.x).normalize(); // perpendicular to view dir, on ground plane
+
+  const forward = new THREE.Vector3(Math.sin(azimuth), 0, Math.cos(azimuth)).normalize();
+
+  const delta = new THREE.Vector3();
+  delta.addScaledVector(right, dxPixels * panSpeed);
+  delta.addScaledVector(forward, -dyPixels * panSpeed);
+  return delta;
 }
