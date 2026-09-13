@@ -9,11 +9,22 @@ required), mobile-first for iPhone/iPad, and also playable on desktop.
 
 ## Status
 
-**Phase 3a — Modular Roads.** Roads are now a real, always-visible surface
-(ribbon meshes sized from each road's `width`, with circular junction pads
-where 3+ roads meet) instead of Phase 2's thin debug lines. Press **R** to
-compare against the original centerline debug lines (now their own overlay,
-off by default), **Z** to toggle zone debug colors.
+**Phase 3b — Buildings.** The village finally looks like a village: 9
+procedurally-built buildings (3 types — small house, large house, shop)
+placed inside the residential/shop zones with a seeded RNG, respecting
+zone boundaries, road clearance, and inter-building spacing. Every building
+has bevel-edged walls, a roof (pyramid or flat), a door, and window(s) —
+never an empty box. Reload the page and the layout is identical every time.
+
+<details>
+<summary>Phase 3a — Modular Roads (done)</summary>
+
+Roads are a real, always-visible surface (ribbon meshes sized from each
+road's `width`, with circular junction pads where 3+ roads meet), replacing
+Phase 2's thin debug lines. Includes a Correction fixing both a
+terrain/road z-fighting issue and a genuine ribbon-vs-ribbon overlap at one
+junction (confirmed and fixed with a dedicated geometric test).
+</details>
 
 <details>
 <summary>Phase 2 — 3D Village Foundation (done)</summary>
