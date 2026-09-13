@@ -62,17 +62,17 @@ describe('buildRoadMeshes (Phase 3a)', () => {
     expect(left.distanceTo(right)).toBeCloseTo(4, 1); // edge "ab" width = 4
   });
 
-  it('AC #7b: creates a junction pad where 2+ edges meet, radius from the widest connected edge', () => {
+  it('AC #7b: creates a junction pad where 2+ edges meet, radius from the widest connected edge plus the Z-fighting safety margin', () => {
     const graph = new RoadGraph(nodes, edges);
     const group = buildRoadMeshes(graph);
 
-    // node 'b': edges ab(4), bc(4), bd(6) meet -> radius = max(4,4,6)/2 = 3
+    // node 'b': edges ab(4), bc(4), bd(6) meet -> radius = max(4,4,6)/2 + JUNCTION_PAD_MARGIN(0.4) = 3.4
     const junction = group.getObjectByName('road-junction-b') as THREE.Mesh;
     expect(junction).toBeDefined();
     junction.geometry.computeBoundingBox();
     const box = junction.geometry.boundingBox!;
     const radius = (box.max.x - box.min.x) / 2;
-    expect(radius).toBeCloseTo(3, 1);
+    expect(radius).toBeCloseTo(3.4, 1);
   });
 
   it('does NOT create a junction pad at a dead-end node (only 1 edge)', () => {

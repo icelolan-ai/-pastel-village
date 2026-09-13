@@ -5,13 +5,23 @@ import type { RoadEdge } from '../villageData';
 const ROAD_Y = 0.02; // just above Terrain (y=0), below the Zone-debug fill (0.03) and Road-debug lines (0.05)
 const JUNCTION_Y = 0.021; // a hair above the ribbon ends so junction pads always win z-fighting at seams
 const ROAD_COLOR = '#c9beae'; // pastel tan-gray
+/**
+ * CORRECTION (Z-fighting fix): a curved edge's `controlPoints` can bend its
+ * departure direction at a node sharply enough that its ribbon still
+ * overlaps a neighboring edge's ribbon just past the "half of widest edge"
+ * radius (confirmed geometrically for node "loop-2" — see
+ * RoadJunctionOverlap.test.ts). This margin is added on top of that radius
+ * so the pad reliably covers the overlap instead of relying on
+ * polygonOffset to hide two same-material, same-Y meshes fighting.
+ */
+export const JUNCTION_PAD_MARGIN = 0.4;
 
 /**
  * Samples the same centerline `RoadGraphDebugRenderer` draws (a Catmull-Rom
  * spline through [fromNode, ...controlPoints, toNode]) so the real mesh and
  * the debug line are guaranteed to trace the same path (Phase 3a AC #2).
  */
-function sampleEdgeCenterline(graph: RoadGraph, edge: RoadEdge): THREE.Vector3[] {
+export function sampleEdgeCenterline(graph: RoadGraph, edge: RoadEdge): THREE.Vector3[] {
   const pathPoints = graph.getEdgePathPoints(edge).map(([x, z]) => new THREE.Vector3(x, ROAD_Y, z));
   const curve = new THREE.CatmullRomCurve3(pathPoints, false, 'catmullrom', 0.2);
   const sampleCount = Math.max(12, pathPoints.length * 10);
@@ -70,6 +80,9 @@ export function buildRoadMeshes(graph: RoadGraph): THREE.Group {
     roughness: 0.95,
     metalness: 0,
     side: THREE.DoubleSide, // safety net against ribbon winding, matches Terrain's approach
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
   });
 
   for (const edge of graph.getAllEdges()) {
@@ -95,6 +108,9 @@ export function buildRoadMeshes(graph: RoadGraph): THREE.Group {
     color: ROAD_COLOR,
     roughness: 0.95,
     metalness: 0,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
   });
 
   for (const [nodeId, connectedEdges] of edgesByNode) {
@@ -103,7 +119,7 @@ export function buildRoadMeshes(graph: RoadGraph): THREE.Group {
     if (!node) continue;
 
     const maxWidth = Math.max(...connectedEdges.map((e) => e.width));
-    const radius = maxWidth / 2;
+    const radius = maxWidth / 2 + JUNCTION_PAD_MARGIN;
     const geometry = new THREE.CircleGeometry(radius, 24);
     // CircleGeometry is radially symmetric, so the rotation direction (+/-90°)
     // doesn't affect its shape the way it would for an asymmetric polygon.
