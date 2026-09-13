@@ -48,6 +48,20 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
 
 ## Workflow
 
+- **Zip upload = project revision.** If the user uploads a `.zip` file in chat,
+  treat it as a revised version of this project, regardless of file type or
+  content. Extract it, and for every path contained in the zip, delete the
+  existing file/folder at that path in the repo and replace it with the
+  extracted version. Do **not** delete any repo file/folder whose path is not
+  present in the zip. This applies no matter what phase is in progress or what
+  the zip contains.
+  - Safety net that still applies (does not require asking first, but is not
+    skipped): run `npm run build` (and `npm run test:e2e` if available) after
+    replacing files, per the rule below; if the build breaks, report exactly
+    what failed instead of pushing broken code. Never commit files that look
+    like secrets/credentials without flagging it first. Follow the normal git
+    commit/push flow below — nothing here authorizes force-pushes, history
+    rewrites, or skipping `git status` checks.
 - **Commit and push directly with `git`.** Do not upload files through the GitHub
   web UI — a prior attempt at that silently dropped the `.github/` folder because
   browsers/OS treat dot-folders as hidden, which broke the deploy pipeline. Always
