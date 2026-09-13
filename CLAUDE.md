@@ -48,6 +48,30 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
 
 ## Workflow
 
+- **Zip upload = project revision, but confirm before touching files.** If the
+  user uploads a `.zip` file in chat, treat it as a revised version of this
+  project, regardless of file type or content. Before deleting or replacing
+  anything: extract the zip, diff it against the repo, and show the user
+  exactly which existing paths would be deleted/replaced and which new paths
+  would be added — then wait for their explicit go-ahead before touching the
+  working tree. Do **not** apply any deletion/replacement without that
+  confirmation, every time a zip is uploaded (this is not a one-time opt-in).
+  Once confirmed: for every path contained in the zip, delete the existing
+  file/folder at that path in the repo and replace it with the extracted
+  version. Do **not** delete any repo file/folder whose path is not present in
+  the zip. This applies no matter what phase is in progress or what the zip
+  contains.
+  - Safety net that still applies after confirmation (not skipped): run
+    `npm run build` (and `npm run test:e2e` if available) after replacing
+    files, per the rule below; if the build breaks, report exactly what failed
+    instead of pushing broken code. Never commit files that look like
+    secrets/credentials without flagging it first. Follow the normal git
+    commit/push flow below — nothing here authorizes force-pushes, history
+    rewrites, or skipping `git status` checks.
+  - This rule itself is not a file inside any given zip's contents to drop:
+    if an uploaded zip's own `CLAUDE.md` doesn't carry this rule (e.g. it was
+    packaged before this rule existed), keep this block when adopting the
+    rest of that `CLAUDE.md`, so the policy survives future uploads.
 - **Commit and push directly with `git`.** Do not upload files through the GitHub
   web UI — a prior attempt at that silently dropped the `.github/` folder because
   browsers/OS treat dot-folders as hidden, which broke the deploy pipeline. Always
@@ -67,8 +91,14 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
   sky dome, one directional + hemisphere light, one placeholder pastel sphere,
   pan/zoom camera controls, FPS-only debug overlay, GitHub Actions deploy
   pipeline. Inline SVG favicon added post-launch to eliminate a `favicon.ico` 404.
-- **Phase 2 — 3D Village Foundation:** `PLANNED` — this is the current task. Full
-  spec below.
+- **Phase 2 — 3D Village Foundation:** built, tested locally (20 Vitest unit
+  tests passing, `npm run build` clean), pending push + live verification.
+  Added `World` scene hierarchy (9 named groups), an organic non-circular
+  terrain sized to always cover the road graph + zones, a road graph (data +
+  debug line rendering), 5 zone types (debug colored patches, toggle with R/Z
+  keys), and camera pan bounds now derived from the real terrain footprint
+  instead of Phase 1's hardcoded ±30. Full spec below for reference.
+- **Phase 3 onward:** not started.
 
 ---
 

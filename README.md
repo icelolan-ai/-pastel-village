@@ -9,11 +9,21 @@ required), mobile-first for iPhone/iPad, and also playable on desktop.
 
 ## Status
 
-**Phase 1 — GitHub + Web Foundation.** This is a rendering-pipeline proof:
-a pastel sky, a ground plane, one rounded placeholder object, working
-pan/zoom camera controls (touch + mouse), and an FPS debug overlay. No
-village content, NPCs, or gameplay systems yet — those arrive in later
-phases per the project's Master Blueprint.
+**Phase 2 — 3D Village Foundation.** The village now has a real (if still
+placeholder-geometry) layout: an organic non-circular terrain, a road graph
+(loop + branches, rendered as debug lines), and five zone types (village
+center, shop, park, residential ×2, nature-buffer ring) rendered as
+toggleable colored ground patches. Press **R** to toggle the road graph
+debug view, **Z** to toggle zone debug colors. No real building/road/nature
+assets yet — those arrive in Phase 3.
+
+<details>
+<summary>Phase 1 — GitHub + Web Foundation (done)</summary>
+
+Rendering-pipeline proof: a pastel sky, a ground plane, one rounded
+placeholder object, working pan/zoom camera controls (touch + mouse), and
+an FPS debug overlay.
+</details>
 
 ## Tech Stack
 

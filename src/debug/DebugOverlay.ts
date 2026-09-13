@@ -1,13 +1,16 @@
 /**
- * Phase 1 scope: FPS only. The full DebugStats singleton (NPC count,
- * zombie count, weather, sim time, perf tier, etc.) arrives with the
- * systems that produce that data in later phases.
+ * Phase 2 scope: FPS plus the two dev-only toggle states added this phase
+ * (Road Graph / Zones debug visualization). The full DebugStats singleton
+ * (NPC count, zombie count, weather, sim time, perf tier, etc.) still
+ * arrives with the systems that produce that data in later phases.
  */
 export class DebugOverlay {
   private readonly element: HTMLElement;
   private frameCount = 0;
   private lastSampleTime = performance.now();
   private fps = 0;
+  private roadDebugVisible = true;
+  private zoneDebugVisible = true;
 
   constructor(element: HTMLElement) {
     this.element = element;
@@ -26,7 +29,19 @@ export class DebugOverlay {
     }
   }
 
+  public setRoadDebugState(visible: boolean): void {
+    this.roadDebugVisible = visible;
+    this.render();
+  }
+
+  public setZoneDebugState(visible: boolean): void {
+    this.zoneDebugVisible = visible;
+    this.render();
+  }
+
   private render(): void {
-    this.element.textContent = `FPS: ${this.fps}`;
+    const roadState = this.roadDebugVisible ? 'ON' : 'off';
+    const zoneState = this.zoneDebugVisible ? 'ON' : 'off';
+    this.element.textContent = `FPS: ${this.fps} | Roads: ${roadState} (R) | Zones: ${zoneState} (Z)`;
   }
 }
