@@ -3,6 +3,7 @@ import { createLights, createPlaceholder, createSkyDome, createTerrain, type Ter
 import { ROAD_EDGES, ROAD_NODES, ZONES, computeVillageBounds } from './villageData';
 import { RoadGraph } from './road/RoadGraph';
 import { createRoadGraphDebugGroup } from './road/RoadGraphDebugRenderer';
+import { buildRoadMeshes } from './road/RoadMeshBuilder';
 import { createZoneDebugGroup } from './ZoneDebugRenderer';
 
 /**
@@ -10,6 +11,14 @@ import { createZoneDebugGroup } from './ZoneDebugRenderer';
  * Zombies, SkyDome, Lights }` hierarchy from Master Blueprint Section 6.
  * Groups with no content yet are still created (empty) so later phases can
  * `worldBundle.groups.buildings.add(...)` etc. without touching this file.
+ *
+ * As of Phase 3a, `Roads` holds the real road meshes (always visible) and
+ * `RoadsDebug` holds the thin debug lines from Phase 2 (toggle with R) —
+ * pressing R no longer hides the real road surface, only the debug overlay.
+ * Note: `RoadsDebug` is — like `ZonesDebug` — not one of the 9 canonical
+ * Section 6 groups; it's a second non-canonical debug group living directly
+ * under `World` alongside them (total top-level children of World = 11:
+ * the 9 canonical groups + ZonesDebug + RoadsDebug).
  */
 export interface WorldBundle {
   /** The single object to `scene.add()`. */
@@ -26,6 +35,8 @@ export interface WorldBundle {
     lights: THREE.Group;
     /** Not one of the 9 canonical groups — a debug-only overlay for Zones (Section 8), toggled independently of Roads. */
     zonesDebug: THREE.Group;
+    /** Not one of the 9 canonical groups — the Phase 2 thin debug lines, now separate from the real road surface in `roads`. */
+    roadsDebug: THREE.Group;
   };
   roadGraph: RoadGraph;
   /** Phase 1 placeholder sphere, kept for now — direct reference so main.ts can animate it without reaching into groups.props.children. */
@@ -49,13 +60,17 @@ export function createWorldBundle(): WorldBundle {
 
   const roadGraph = new RoadGraph(ROAD_NODES, ROAD_EDGES);
   const roadDebugLines = createRoadGraphDebugGroup(roadGraph);
+  const realRoadMeshes = buildRoadMeshes(roadGraph);
   const zoneDebugPatches = createZoneDebugGroup(ZONES);
 
   const terrainGroup = makeGroup('Terrain');
   terrainGroup.add(terrainMesh);
 
   const roadsGroup = makeGroup('Roads');
-  roadsGroup.add(roadDebugLines);
+  roadsGroup.add(realRoadMeshes); // real, always-visible road surface (Phase 3a)
+
+  const roadsDebugGroup = makeGroup('RoadsDebug');
+  roadsDebugGroup.add(roadDebugLines); // thin centerline overlay, toggled with R — no longer hides the real roads
 
   const buildingsGroup = makeGroup('Buildings'); // empty — Phase 3
   const natureGroup = makeGroup('Nature'); // empty — Phase 3
@@ -75,6 +90,11 @@ export function createWorldBundle(): WorldBundle {
   const zonesDebugGroup = makeGroup('ZonesDebug');
   zonesDebugGroup.add(zoneDebugPatches);
 
+  // Now that real road surfaces exist, the thin centerline overlay is
+  // redundant by default — it's a QC aid (AC #2: compare it against the
+  // real mesh), so it starts OFF and is toggled on with R.
+  roadsDebugGroup.visible = false;
+
   const world = makeGroup('World');
   world.add(
     terrainGroup,
@@ -87,6 +107,7 @@ export function createWorldBundle(): WorldBundle {
     skyDomeGroup,
     lightsGroup,
     zonesDebugGroup,
+    roadsDebugGroup,
   );
 
   const dispose = () => {
@@ -116,12 +137,13 @@ export function createWorldBundle(): WorldBundle {
       skyDome: skyDomeGroup,
       lights: lightsGroup,
       zonesDebug: zonesDebugGroup,
+      roadsDebug: roadsDebugGroup,
     },
     roadGraph,
     placeholder,
     terrainExtents,
     setRoadDebugVisible: (visible: boolean) => {
-      roadsGroup.visible = visible;
+      roadsDebugGroup.visible = visible;
     },
     setZoneDebugVisible: (visible: boolean) => {
       zonesDebugGroup.visible = visible;

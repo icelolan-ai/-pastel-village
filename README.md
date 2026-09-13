@@ -9,13 +9,19 @@ required), mobile-first for iPhone/iPad, and also playable on desktop.
 
 ## Status
 
-**Phase 2 — 3D Village Foundation.** The village now has a real (if still
-placeholder-geometry) layout: an organic non-circular terrain, a road graph
-(loop + branches, rendered as debug lines), and five zone types (village
-center, shop, park, residential ×2, nature-buffer ring) rendered as
-toggleable colored ground patches. Press **R** to toggle the road graph
-debug view, **Z** to toggle zone debug colors. No real building/road/nature
-assets yet — those arrive in Phase 3.
+**Phase 3a — Modular Roads.** Roads are now a real, always-visible surface
+(ribbon meshes sized from each road's `width`, with circular junction pads
+where 3+ roads meet) instead of Phase 2's thin debug lines. Press **R** to
+compare against the original centerline debug lines (now their own overlay,
+off by default), **Z** to toggle zone debug colors.
+
+<details>
+<summary>Phase 2 — 3D Village Foundation (done)</summary>
+
+Organic non-circular terrain, a road graph (loop + branches) and 5 zone
+types as data, camera pan bounds derived from the real terrain footprint.
+Includes a Correction fixing a pan-direction bug present since Phase 1.
+</details>
 
 <details>
 <summary>Phase 1 — GitHub + Web Foundation (done)</summary>

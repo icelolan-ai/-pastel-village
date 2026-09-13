@@ -31,7 +31,7 @@ function main(): void {
   infra.scene.add(world.world);
 
   const debugOverlay = new DebugOverlay(debugElement);
-  debugOverlay.setRoadDebugState(world.groups.roads.visible);
+  debugOverlay.setRoadDebugState(world.groups.roadsDebug.visible);
   debugOverlay.setZoneDebugState(world.groups.zonesDebug.visible);
 
   const cameraController = new CameraController(infra.camera, canvas);
@@ -53,7 +53,7 @@ function main(): void {
   // Road Graph / Zones on top of the Phase 1 FPS-only overlay).
   window.addEventListener('keydown', (event) => {
     if (event.key === 'r' || event.key === 'R') {
-      const next = !world.groups.roads.visible;
+      const next = !world.groups.roadsDebug.visible;
       world.setRoadDebugVisible(next);
       debugOverlay.setRoadDebugState(next);
     } else if (event.key === 'z' || event.key === 'Z') {
