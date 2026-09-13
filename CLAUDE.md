@@ -62,6 +62,10 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
     like secrets/credentials without flagging it first. Follow the normal git
     commit/push flow below — nothing here authorizes force-pushes, history
     rewrites, or skipping `git status` checks.
+  - This rule itself is not a file inside any given zip's contents to drop:
+    if an uploaded zip's own `CLAUDE.md` doesn't carry this rule (e.g. it was
+    packaged before this rule existed), keep this block when adopting the
+    rest of that `CLAUDE.md`, so the policy survives future uploads.
 - **Commit and push directly with `git`.** Do not upload files through the GitHub
   web UI — a prior attempt at that silently dropped the `.github/` folder because
   browsers/OS treat dot-folders as hidden, which broke the deploy pipeline. Always
@@ -81,8 +85,14 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
   sky dome, one directional + hemisphere light, one placeholder pastel sphere,
   pan/zoom camera controls, FPS-only debug overlay, GitHub Actions deploy
   pipeline. Inline SVG favicon added post-launch to eliminate a `favicon.ico` 404.
-- **Phase 2 — 3D Village Foundation:** `PLANNED` — this is the current task. Full
-  spec below.
+- **Phase 2 — 3D Village Foundation:** built, tested locally (20 Vitest unit
+  tests passing, `npm run build` clean), pending push + live verification.
+  Added `World` scene hierarchy (9 named groups), an organic non-circular
+  terrain sized to always cover the road graph + zones, a road graph (data +
+  debug line rendering), 5 zone types (debug colored patches, toggle with R/Z
+  keys), and camera pan bounds now derived from the real terrain footprint
+  instead of Phase 1's hardcoded ±30. Full spec below for reference.
+- **Phase 3 onward:** not started.
 
 ---
 

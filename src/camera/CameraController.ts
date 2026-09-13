@@ -8,6 +8,13 @@ import * as THREE from 'three';
  *  - Pan:  1-finger drag (touch) / left mouse drag (desktop)
  *  - Zoom: pinch (touch) / wheel (desktop)
  */
+export interface PanBounds {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
 export interface CameraControllerOptions {
   target?: THREE.Vector3;
   distance?: number;
@@ -15,7 +22,8 @@ export interface CameraControllerOptions {
   maxDistance?: number;
   azimuth?: number; // radians, fixed
   polar?: number; // radians from vertical (Y) axis, fixed
-  panBounds?: number; // max |x| / |z| the target can pan to
+  /** Pan is clamped to this rectangle on the ground plane. Defaults to a generous fallback until setPanBounds() is called with the real terrain footprint. */
+  panBounds?: PanBounds;
 }
 
 interface PointerState {
@@ -34,7 +42,7 @@ export class CameraController {
   private readonly maxDistance: number;
   private readonly azimuth: number;
   private readonly polar: number;
-  private readonly panBounds: number;
+  private panBounds: PanBounds;
 
   private readonly pointers = new Map<number, PointerState>();
   private pinchStartDistance = 0;
@@ -55,10 +63,24 @@ export class CameraController {
     this.maxDistance = options.maxDistance ?? 35;
     this.azimuth = options.azimuth ?? THREE.MathUtils.degToRad(45);
     this.polar = options.polar ?? THREE.MathUtils.degToRad(58); // ~58deg from horizon, within 50-65 spec range
-    this.panBounds = options.panBounds ?? 30;
+    this.panBounds = options.panBounds ?? { minX: -30, maxX: 30, minZ: -30, maxZ: 30 };
 
     this.updateCameraPosition();
     this.attachListeners();
+  }
+
+  /** Called once the real terrain footprint is known (see WorldBundle.terrainExtents). Replaces the Phase 1 hardcoded ±30 fallback. */
+  public setPanBounds(bounds: PanBounds, marginInset = 3): void {
+    this.panBounds = {
+      minX: bounds.minX + marginInset,
+      maxX: bounds.maxX - marginInset,
+      minZ: bounds.minZ + marginInset,
+      maxZ: bounds.maxZ - marginInset,
+    };
+    // Re-clamp the current target in case it's now outside the new (usually smaller) bounds.
+    this.target.x = THREE.MathUtils.clamp(this.target.x, this.panBounds.minX, this.panBounds.maxX);
+    this.target.z = THREE.MathUtils.clamp(this.target.z, this.panBounds.minZ, this.panBounds.maxZ);
+    this.updateCameraPosition();
   }
 
   private attachListeners(): void {
@@ -146,8 +168,8 @@ export class CameraController {
     this.target.addScaledVector(right, -dxPixels * panSpeed);
     this.target.addScaledVector(forward, dyPixels * panSpeed);
 
-    this.target.x = THREE.MathUtils.clamp(this.target.x, -this.panBounds, this.panBounds);
-    this.target.z = THREE.MathUtils.clamp(this.target.z, -this.panBounds, this.panBounds);
+    this.target.x = THREE.MathUtils.clamp(this.target.x, this.panBounds.minX, this.panBounds.maxX);
+    this.target.z = THREE.MathUtils.clamp(this.target.z, this.panBounds.minZ, this.panBounds.maxZ);
 
     this.updateCameraPosition();
   }

@@ -1,18 +1,19 @@
-import { createSceneBundle, resizeSceneBundle } from '../rendering/SceneSetup';
+import { createRenderInfra, resizeRenderInfra } from '../rendering/SceneSetup';
+import { createWorldBundle } from '../world/WorldBundle';
 import { CameraController } from '../camera/CameraController';
 import { DebugOverlay } from '../debug/DebugOverlay';
 
 // --- Fixed-timestep simulation / variable-rate render separation --------
-// Phase 1 has no simulation content yet, but the loop is structured this
-// way from the start (Master Blueprint Section 6 / 28) so later phases can
-// plug NPC/weather/time ticks into `simulateTick` without touching the
-// render loop itself.
+// No simulation content yet through Phase 2, but the loop is structured
+// this way from the start (Master Blueprint Section 6 / 28) so later
+// phases can plug NPC/weather/time ticks into `simulateTick` without
+// touching the render loop itself.
 const SIM_TICK_RATE = 10; // ticks per second
 const SIM_TICK_MS = 1000 / SIM_TICK_RATE;
 let simAccumulatorMs = 0;
 
 function simulateTick(_dtMs: number): void {
-  // Intentionally empty in Phase 1. Future phases (Time/Weather/NPC)
+  // Intentionally empty through Phase 2. Future phases (Time/Weather/NPC)
   // hook in here.
 }
 // ---------------------------------------------------------------------
@@ -25,19 +26,42 @@ function main(): void {
     throw new Error('[main] Required DOM elements are missing (scene-canvas / debug-overlay).');
   }
 
-  const bundle = createSceneBundle(canvas);
-  const cameraController = new CameraController(bundle.camera, canvas);
+  const infra = createRenderInfra(canvas);
+  const world = createWorldBundle();
+  infra.scene.add(world.world);
+
   const debugOverlay = new DebugOverlay(debugElement);
+  debugOverlay.setRoadDebugState(world.groups.roads.visible);
+  debugOverlay.setZoneDebugState(world.groups.zonesDebug.visible);
+
+  const cameraController = new CameraController(infra.camera, canvas);
+  // Phase 1 shipped with a hardcoded ±30 fallback; now that the terrain's
+  // real footprint is known, pan is clamped to it instead.
+  cameraController.setPanBounds(world.terrainExtents);
 
   function resize(): void {
     const width = window.innerWidth;
     const height = window.innerHeight;
-    resizeSceneBundle(bundle, width, height);
+    resizeRenderInfra(infra, width, height);
   }
   resize();
   window.addEventListener('resize', resize);
   // iOS Safari fires odd resize timing on address-bar show/hide.
   window.visualViewport?.addEventListener('resize', resize);
+
+  // Dev-only debug toggles (Master Blueprint Section 32; this phase adds
+  // Road Graph / Zones on top of the Phase 1 FPS-only overlay).
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'r' || event.key === 'R') {
+      const next = !world.groups.roads.visible;
+      world.setRoadDebugVisible(next);
+      debugOverlay.setRoadDebugState(next);
+    } else if (event.key === 'z' || event.key === 'Z') {
+      const next = !world.groups.zonesDebug.visible;
+      world.setZoneDebugVisible(next);
+      debugOverlay.setZoneDebugState(next);
+    }
+  });
 
   let lastFrameTime = performance.now();
 
@@ -55,11 +79,11 @@ function main(): void {
 
     // Small idle motion purely to give visual confirmation the render
     // loop is alive — not game content.
-    bundle.placeholder.position.y = 1.2 + Math.sin(now * 0.0015) * 0.08;
-    bundle.placeholder.rotation.y += dtMs * 0.0004;
+    world.placeholder.position.y = 1.2 + Math.sin(now * 0.0015) * 0.08;
+    world.placeholder.rotation.y += dtMs * 0.0004;
 
     debugOverlay.tick(now);
-    bundle.renderer.render(bundle.scene, bundle.camera);
+    infra.renderer.render(infra.scene, infra.camera);
   }
   requestAnimationFrame(renderLoop);
 
@@ -68,7 +92,8 @@ function main(): void {
     'beforeunload',
     () => {
       cameraController.dispose();
-      bundle.dispose();
+      world.dispose();
+      infra.dispose();
     },
     { once: true },
   );
