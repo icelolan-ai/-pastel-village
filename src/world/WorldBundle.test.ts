@@ -103,4 +103,22 @@ describe('createWorldBundle', () => {
       expect(z).toBeLessThanOrEqual(maxZ);
     }
   });
+
+  it('Phase 3b: the Buildings group is populated with 6-12 buildings of 3+ distinct types', () => {
+    const bundle = createWorldBundle();
+    const buildingGroups = bundle.groups.buildings.children;
+    expect(buildingGroups.length).toBeGreaterThanOrEqual(6);
+    expect(buildingGroups.length).toBeLessThanOrEqual(12);
+
+    const typesSeen = new Set(buildingGroups.map((child) => child.userData.typeId));
+    expect(typesSeen.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('Phase 3b: createWorldBundle produces an identical Buildings layout every call (fixed seed)', () => {
+    const bundleA = createWorldBundle();
+    const bundleB = createWorldBundle();
+    const positionsA = bundleA.groups.buildings.children.map((c) => [c.position.x, c.position.z, c.rotation.y]);
+    const positionsB = bundleB.groups.buildings.children.map((c) => [c.position.x, c.position.z, c.rotation.y]);
+    expect(positionsB).toEqual(positionsA);
+  });
 });

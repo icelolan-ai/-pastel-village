@@ -5,6 +5,9 @@ import { RoadGraph } from './road/RoadGraph';
 import { createRoadGraphDebugGroup } from './road/RoadGraphDebugRenderer';
 import { buildRoadMeshes } from './road/RoadMeshBuilder';
 import { createZoneDebugGroup } from './ZoneDebugRenderer';
+import { buildBuildingMesh } from './buildings/BuildingMeshBuilder';
+import { BUILDING_TYPES } from './buildings/buildingTypes';
+import { placeAllBuildings } from './buildings/BuildingPlacement';
 
 /**
  * Builds the `World > { Terrain, Roads, Buildings, Nature, Props, NPCs,
@@ -72,8 +75,19 @@ export function createWorldBundle(): WorldBundle {
   const roadsDebugGroup = makeGroup('RoadsDebug');
   roadsDebugGroup.add(roadDebugLines); // thin centerline overlay, toggled with R — no longer hides the real roads
 
-  const buildingsGroup = makeGroup('Buildings'); // empty — Phase 3
-  const natureGroup = makeGroup('Nature'); // empty — Phase 3
+  const buildingsGroup = makeGroup('Buildings');
+  const VILLAGE_SEED = 42; // fixed — Phase 3b AC #5 requires identical layout across every reload
+  const buildingPlacements = placeAllBuildings(ZONES, roadGraph, VILLAGE_SEED);
+  const buildingLift = 0.01; // avoid z-fighting with Terrain at the wall base, same technique as Roads
+  for (const placement of buildingPlacements) {
+    const mesh = buildBuildingMesh(BUILDING_TYPES[placement.typeId]);
+    mesh.position.set(placement.position[0], buildingLift, placement.position[1]);
+    mesh.rotation.y = placement.rotationY;
+    mesh.userData.typeId = placement.typeId;
+    buildingsGroup.add(mesh);
+  }
+
+  const natureGroup = makeGroup('Nature'); // empty — Phase 3c
   const npcsGroup = makeGroup('NPCs'); // empty — Phase 5
   const zombiesGroup = makeGroup('Zombies'); // empty — Phase 7
 

@@ -88,18 +88,21 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
 
 - **Phase 0 — Master Blueprint:** `APPROVED`
 - **Phase 1 — GitHub + Web Foundation:** `APPROVED` / live.
-- **Phase 2 — 3D Village Foundation:** built + corrected (a pan-direction bug
-  present since Phase 1 was found and fixed, with unit tests proving both
-  the fix and that the old formula would fail the same test), pending final
-  live sign-off.
-- **Phase 3a — Modular Roads:** built, tested locally (34 Vitest unit tests
-  passing, `npm run build` clean), pending push + live verification. Roads
-  are now real ribbon meshes (width from `RoadEdge.width`) with circular
-  junction pads at nodes where 3+ roads meet, replacing Phase 2's thin debug
-  lines as the always-visible road surface. The old debug lines moved to a
-  new `RoadsDebug` group (off by default, toggle with R) so `World` now has
-  11 top-level groups total (9 canonical + `ZonesDebug` + `RoadsDebug`).
-- **Phase 3b (Buildings) onward:** not started.
+- **Phase 2 — 3D Village Foundation:** `APPROVED` (with a Correction fixing a
+  pan-direction bug present since Phase 1).
+- **Phase 3a — Modular Roads:** `APPROVED` (with a Correction fixing a
+  terrain/road z-fighting issue AND a genuine ribbon-vs-ribbon overlap at
+  one junction, found via a dedicated geometric test, not guessed).
+- **Phase 3b — Buildings:** built, tested locally (65 Vitest unit tests
+  passing, `npm run build` clean), pending push + live verification. 9
+  procedural buildings (3 types: small-house, large-house, shop) placed via
+  seeded rejection-sampling into `residential-a`/`residential-b`/`shop`
+  zones, respecting zone boundaries, road clearance, and building spacing.
+  Walls use bevel-edged `ExtrudeGeometry`; pyramid roofs use a 4-sided
+  `ConeGeometry` (a plain extrusion can't taper to a point); doors/windows
+  are flat colored accent planes pressed against the wall (no CSG library
+  available, so no true cutouts).
+- **Phase 3c (Nature) onward:** not started.
 
 ---
 
@@ -252,3 +255,39 @@ pastel tan-gray (`#c9beae`), `receiveShadow = true`.
 Dead-end), รัศมี junction ตรงกับสูตร. `WorldBundle.test.ts` ยืนยันเพิ่มว่า
 `Roads` ไม่มี debug line หลงเหลือ, `RoadsDebug` มี line ครบตาม edge count,
 ปุ่ม R ไม่กระทบ `Roads` อีกต่อไป.
+
+---
+
+# BUILD SPECIFICATION — PHASE 3b: BUILDINGS (superseded Phase 3a spec above — kept for history)
+
+**สถานะ:** Built + tested locally, pending push/live verification.
+**อ้างอิง:** Master Blueprint Section 9, ต่อยอดจาก Phase 3a (`APPROVED`)
+
+## เป้าหมาย
+วางอาคารจริง (3 แบบ: small-house, large-house, shop) ลงในโซน Residential
+×2 + Shop ที่มีอยู่แล้ว ด้วย Seeded random + Rejection sampling — ต้องอยู่ใน
+ขอบเขต Zone, ไม่ทับ Road, ไม่ทับกันเอง, Reload แล้วตำแหน่งเดิมทุกครั้ง
+
+## จุดที่เบี่ยงเบนจาก Spec (แจ้ง Chat A ไว้แล้วใน Report)
+1. **หลังคาทรงพีระมิดใช้ `ConeGeometry(r,h,4)` ไม่ใช่ `ExtrudeGeometry`** —
+   เพราะ Extrude ธรรมดาไม่สามารถทำทรงสอบ (Taper) ไปจนถึงยอดแหลมได้
+   (Cross-section คงที่ตลอดการ Extrude) หลังคาเรียบ (Shop) ยังใช้
+   ExtrudeGeometry+Bevel ตรงตาม Spec
+2. **ประตู/หน้าต่างเป็น Flat accent plane แปะทับผนัง ไม่ใช่ช่องเจาะจริง** —
+   เพราะไม่มี CSG library ในโปรเจกต์ (การเพิ่มจะผิดกฎ "ห้ามเพิ่ม Dependency
+   นอกแผน") เป็นเทคนิคที่ใช้กันทั่วไปในเกมสไตล์ Toy/Stylized
+
+## Modules ใหม่ (`src/world/buildings/`)
+- `seededRandom.ts` — mulberry32 PRNG (ไฟล์เสริมนอกแผนเดิม จำเป็นเพราะ
+  `Math.random()` Seed ไม่ได้)
+- `buildingTypes.ts` — Data นิยาม 3 แบบอาคาร
+- `BuildingMeshBuilder.ts` — `buildBuildingMesh(type)`
+- `BuildingPlacement.ts` — `placeBuildingsInZone()` + `placeAllBuildings()`
+  (Orchestrator เรียกทุก Zone ที่กำหนดค่าไว้), ใช้
+  `sampleEdgeCenterline()` จาก RoadMeshBuilder (Phase 3a) เพื่อเช็คระยะห่าง
+  จาก Road โดยอิงเส้นโค้งจริงที่ Render ไม่ใช่เส้นตรงประมาณ
+
+## Testing
+65 Unit tests รวมทั้งโปรเจกต์ (เพิ่ม 15 จาก Phase 3a) ครอบคลุม AC #1, #2,
+#3 (Point-in-polygon), #4 (Road clearance + Building spacing ทั้งในโซน
+เดียวกันและข้ามโซน), #5 (Determinism ทั้งระดับ Zone และระดับ Village)
