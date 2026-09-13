@@ -48,18 +48,24 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
 
 ## Workflow
 
-- **Zip upload = project revision.** If the user uploads a `.zip` file in chat,
-  treat it as a revised version of this project, regardless of file type or
-  content. Extract it, and for every path contained in the zip, delete the
-  existing file/folder at that path in the repo and replace it with the
-  extracted version. Do **not** delete any repo file/folder whose path is not
-  present in the zip. This applies no matter what phase is in progress or what
-  the zip contains.
-  - Safety net that still applies (does not require asking first, but is not
-    skipped): run `npm run build` (and `npm run test:e2e` if available) after
-    replacing files, per the rule below; if the build breaks, report exactly
-    what failed instead of pushing broken code. Never commit files that look
-    like secrets/credentials without flagging it first. Follow the normal git
+- **Zip upload = project revision, but confirm before touching files.** If the
+  user uploads a `.zip` file in chat, treat it as a revised version of this
+  project, regardless of file type or content. Before deleting or replacing
+  anything: extract the zip, diff it against the repo, and show the user
+  exactly which existing paths would be deleted/replaced and which new paths
+  would be added — then wait for their explicit go-ahead before touching the
+  working tree. Do **not** apply any deletion/replacement without that
+  confirmation, every time a zip is uploaded (this is not a one-time opt-in).
+  Once confirmed: for every path contained in the zip, delete the existing
+  file/folder at that path in the repo and replace it with the extracted
+  version. Do **not** delete any repo file/folder whose path is not present in
+  the zip. This applies no matter what phase is in progress or what the zip
+  contains.
+  - Safety net that still applies after confirmation (not skipped): run
+    `npm run build` (and `npm run test:e2e` if available) after replacing
+    files, per the rule below; if the build breaks, report exactly what failed
+    instead of pushing broken code. Never commit files that look like
+    secrets/credentials without flagging it first. Follow the normal git
     commit/push flow below — nothing here authorizes force-pushes, history
     rewrites, or skipping `git status` checks.
   - This rule itself is not a file inside any given zip's contents to drop:
