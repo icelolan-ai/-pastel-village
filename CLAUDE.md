@@ -93,15 +93,18 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
 - **Phase 3a — Modular Roads:** `APPROVED` (with a Correction fixing a
   terrain/road z-fighting issue AND a genuine ribbon-vs-ribbon overlap at
   one junction, found via a dedicated geometric test, not guessed).
-- **Phase 3b — Buildings:** built, tested locally (65 Vitest unit tests
-  passing, `npm run build` clean), pending push + live verification. 9
-  procedural buildings (3 types: small-house, large-house, shop) placed via
-  seeded rejection-sampling into `residential-a`/`residential-b`/`shop`
-  zones, respecting zone boundaries, road clearance, and building spacing.
-  Walls use bevel-edged `ExtrudeGeometry`; pyramid roofs use a 4-sided
-  `ConeGeometry` (a plain extrusion can't taper to a point); doors/windows
-  are flat colored accent planes pressed against the wall (no CSG library
-  available, so no true cutouts).
+- **Phase 3b — Buildings:** built + Clay-style visual correction applied
+  (rounded corners, thicker bevel, MeshPhysicalMaterial with clearcoat,
+  per-instance seeded color jitter, softer studio lighting, 2×2 window
+  panes with a frame). 67 Vitest unit tests passing, `npm run build` clean.
+  **Correction to earlier status:** actual verified building count is **8**,
+  not 9 as first reported — one shop-zone slot can't find room within the
+  attempt budget (pre-existing Phase 3b behavior, only discovered via a
+  diagnostic run during this correction). **Open concern:** the window
+  correction raised total scene draw calls from ~64 to ~108 (each window
+  went from 1 mesh to 5 — a frame + 2×2 panes), now above the ~100 budget
+  reference in Master Blueprint Section 17. Flagged for Chat A; no
+  optimization applied yet since none was requested.
 - **Phase 3c (Nature) onward:** not started.
 
 ---

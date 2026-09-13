@@ -8,7 +8,14 @@ export interface BuildingTypeDef {
   wallHeight: number;
   roofStyle: RoofStyle;
   roofHeight: number;
+  /**
+   * CORRECTION (Clay style): treated as a *base* color, not the final
+   * on-screen color — BuildingMeshBuilder.buildBuildingMesh() applies a
+   * small seeded hue/saturation/lightness jitter per instance, so no two
+   * buildings of the same type are perfectly identical.
+   */
   wallColor: string;
+  /** Same base/jitter treatment as wallColor — see above. */
   roofColor: string;
   doorWidth: number;
   doorHeight: number;

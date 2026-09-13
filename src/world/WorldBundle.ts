@@ -80,7 +80,7 @@ export function createWorldBundle(): WorldBundle {
   const buildingPlacements = placeAllBuildings(ZONES, roadGraph, VILLAGE_SEED);
   const buildingLift = 0.01; // avoid z-fighting with Terrain at the wall base, same technique as Roads
   for (const placement of buildingPlacements) {
-    const mesh = buildBuildingMesh(BUILDING_TYPES[placement.typeId]);
+    const mesh = buildBuildingMesh(BUILDING_TYPES[placement.typeId], placement.colorSeed);
     mesh.position.set(placement.position[0], buildingLift, placement.position[1]);
     mesh.rotation.y = placement.rotationY;
     mesh.userData.typeId = placement.typeId;

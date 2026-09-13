@@ -34,16 +34,48 @@ describe('buildBuildingMesh', () => {
     expect(roofStyles.size).toBeGreaterThanOrEqual(2);
   });
 
-  it('window count matches each type definition', () => {
+  it('window count matches each type definition (CORRECTION: each window is now a group with a frame + 4 panes, so count only the top-level slots)', () => {
     for (const typeId of BUILDING_TYPE_IDS) {
       const type = BUILDING_TYPES[typeId];
       const group = buildBuildingMesh(type);
       let windowCount = 0;
       group.traverse((obj) => {
-        if (obj.name.startsWith('window-')) windowCount += 1;
+        if (/^window-\d+$/.test(obj.name)) windowCount += 1;
       });
       expect(windowCount).toBe(type.windowCount);
     }
+  });
+
+  it('CORRECTION (Clay style): each window is a 2x2 pane grid with a frame behind it', () => {
+    const type = BUILDING_TYPES['large-house']; // has windowCount: 2
+    const group = buildBuildingMesh(type);
+    const windowGroup = group.getObjectByName('window-0') as THREE.Group;
+    expect(windowGroup).toBeDefined();
+
+    let paneCount = 0;
+    let frameCount = 0;
+    windowGroup.traverse((obj) => {
+      if (/^window-pane-\d+$/.test(obj.name)) paneCount += 1;
+      if (obj.name === 'window-frame') frameCount += 1;
+    });
+    expect(paneCount).toBe(4);
+    expect(frameCount).toBe(1);
+  });
+
+  it('CORRECTION (Clay style): different colorSeed values produce different actual wall colors, same seed reproduces the same color', () => {
+    const type = BUILDING_TYPES['small-house'];
+
+    const groupA1 = buildBuildingMesh(type, 111);
+    const groupA2 = buildBuildingMesh(type, 111);
+    const groupB = buildBuildingMesh(type, 222);
+
+    const colorOf = (group: THREE.Group) => {
+      const walls = group.getObjectByName('walls') as THREE.Mesh;
+      return (walls.material as THREE.MeshPhysicalMaterial).color.getHexString();
+    };
+
+    expect(colorOf(groupA1)).toBe(colorOf(groupA2)); // determinism: same seed -> same color
+    expect(colorOf(groupA1)).not.toBe(colorOf(groupB)); // different seed -> (almost certainly) different color
   });
 
   it('walls geometry actually spans the full footprint (bounding box matches width/depth)', () => {
@@ -55,11 +87,13 @@ describe('buildBuildingMesh', () => {
       const box = walls.geometry.boundingBox!;
       const width = box.max.x - box.min.x;
       const depth = box.max.z - box.min.z;
-      // Bevel adds a small margin outward, so allow a bit of slack.
+      // CORRECTION (Clay style) increased bevelSize from 0.04 to 0.15,
+      // which measurably adds ~0.3 to each footprint dimension — allow
+      // a bit more slack than that to avoid float-boundary flakiness.
       expect(width).toBeGreaterThanOrEqual(type.width);
-      expect(width).toBeLessThan(type.width + 0.3);
+      expect(width).toBeLessThan(type.width + 0.35);
       expect(depth).toBeGreaterThanOrEqual(type.depth);
-      expect(depth).toBeLessThan(type.depth + 0.3);
+      expect(depth).toBeLessThan(type.depth + 0.35);
     }
   });
 });
