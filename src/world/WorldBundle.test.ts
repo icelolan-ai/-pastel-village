@@ -24,29 +24,60 @@ describe('createWorldBundle', () => {
     }
   });
 
-  it('the Roads group contains one line per road edge (loop + branches)', () => {
+  it('AC #1: the real Roads group contains a ribbon mesh per edge + a junction pad per multi-edge node (not debug lines)', () => {
     const bundle = createWorldBundle();
-    const lineCount = bundle.roadGraph.getAllEdges().length;
-    let renderedLines = 0;
+    const edgeCount = bundle.roadGraph.getAllEdges().length;
+
+    let meshCount = 0;
+    let lineCount = 0;
     bundle.groups.roads.traverse((obj) => {
-      if (obj instanceof THREE.Line) renderedLines += 1;
+      if (obj instanceof THREE.Mesh) meshCount += 1;
+      if (obj instanceof THREE.Line) lineCount += 1;
     });
-    expect(renderedLines).toBe(lineCount);
-    expect(lineCount).toBeGreaterThanOrEqual(4); // AC #2: at least 4 branch/loop segments
+
+    expect(lineCount).toBe(0); // debug lines must NOT live in the real Roads group anymore
+    expect(meshCount).toBeGreaterThanOrEqual(edgeCount); // at least one ribbon mesh per edge, plus any junction pads
   });
 
-  it('setRoadDebugVisible / setZoneDebugVisible actually toggle group visibility', () => {
+  it('AC #2: RoadsDebug contains exactly one line per road edge, tracing the same path as the real meshes', () => {
+    const bundle = createWorldBundle();
+    const edgeCount = bundle.roadGraph.getAllEdges().length;
+    let lineCount = 0;
+    bundle.groups.roadsDebug.traverse((obj) => {
+      if (obj instanceof THREE.Line) lineCount += 1;
+    });
+    expect(lineCount).toBe(edgeCount);
+    expect(edgeCount).toBeGreaterThanOrEqual(4); // at least 4 branch/loop segments
+  });
+
+  it('AC #4: pressing R only hides RoadsDebug — the real Roads group is unaffected', () => {
     const bundle = createWorldBundle();
 
-    bundle.setRoadDebugVisible(false);
-    expect(bundle.groups.roads.visible).toBe(false);
     bundle.setRoadDebugVisible(true);
+    expect(bundle.groups.roadsDebug.visible).toBe(true);
     expect(bundle.groups.roads.visible).toBe(true);
 
+    bundle.setRoadDebugVisible(false);
+    expect(bundle.groups.roadsDebug.visible).toBe(false);
+    expect(bundle.groups.roads.visible).toBe(true); // real roads must stay visible regardless of the debug toggle
+  });
+
+  it('AC #5: setZoneDebugVisible is unaffected by the road changes', () => {
+    const bundle = createWorldBundle();
     bundle.setZoneDebugVisible(false);
     expect(bundle.groups.zonesDebug.visible).toBe(false);
     bundle.setZoneDebugVisible(true);
     expect(bundle.groups.zonesDebug.visible).toBe(true);
+  });
+
+  it('RoadsDebug starts hidden by default (real roads already show the path; debug lines are opt-in for comparison)', () => {
+    const bundle = createWorldBundle();
+    expect(bundle.groups.roadsDebug.visible).toBe(false);
+  });
+
+  it('AC #6 regression: World now has 11 top-level groups (9 canonical + ZonesDebug + RoadsDebug)', () => {
+    const bundle = createWorldBundle();
+    expect(bundle.world.children.length).toBe(11);
   });
 
   it('zone debug group renders at least 4 distinct zone types (AC #3)', () => {

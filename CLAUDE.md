@@ -87,18 +87,19 @@ incl. iPhone 13 / iPad viewport emulation), GitHub Actions → GitHub Pages
 ## Project status
 
 - **Phase 0 — Master Blueprint:** `APPROVED`
-- **Phase 1 — GitHub + Web Foundation:** `APPROVED` / live. Ground plane, pastel
-  sky dome, one directional + hemisphere light, one placeholder pastel sphere,
-  pan/zoom camera controls, FPS-only debug overlay, GitHub Actions deploy
-  pipeline. Inline SVG favicon added post-launch to eliminate a `favicon.ico` 404.
-- **Phase 2 — 3D Village Foundation:** built, tested locally (20 Vitest unit
-  tests passing, `npm run build` clean), pending push + live verification.
-  Added `World` scene hierarchy (9 named groups), an organic non-circular
-  terrain sized to always cover the road graph + zones, a road graph (data +
-  debug line rendering), 5 zone types (debug colored patches, toggle with R/Z
-  keys), and camera pan bounds now derived from the real terrain footprint
-  instead of Phase 1's hardcoded ±30. Full spec below for reference.
-- **Phase 3 onward:** not started.
+- **Phase 1 — GitHub + Web Foundation:** `APPROVED` / live.
+- **Phase 2 — 3D Village Foundation:** built + corrected (a pan-direction bug
+  present since Phase 1 was found and fixed, with unit tests proving both
+  the fix and that the old formula would fail the same test), pending final
+  live sign-off.
+- **Phase 3a — Modular Roads:** built, tested locally (34 Vitest unit tests
+  passing, `npm run build` clean), pending push + live verification. Roads
+  are now real ribbon meshes (width from `RoadEdge.width`) with circular
+  junction pads at nodes where 3+ roads meet, replacing Phase 2's thin debug
+  lines as the always-visible road surface. The old debug lines moved to a
+  new `RoadsDebug` group (off by default, toggle with R) so `World` now has
+  11 top-level groups total (9 canonical + `ZonesDebug` + `RoadsDebug`).
+- **Phase 3b (Buildings) onward:** not started.
 
 ---
 
@@ -217,3 +218,37 @@ src/
 
 กลับไปรายงาน READY FOR REVIEW ที่ chat วางแผน (Chat A) พร้อมผลตรวจ 8 ข้อด้านบน —
 อย่า Approve ตัวเอง และอย่าเริ่ม Phase 3 ต่อจนกว่าจะได้รับการ Approve
+
+---
+
+# BUILD SPECIFICATION — PHASE 3a: MODULAR ROADS (superseded Phase 2 spec above — kept for history)
+
+**สถานะ:** Built + tested locally, pending push/live verification.
+**อ้างอิง:** Master Blueprint Section 9-10, ต่อยอดจาก Phase 2 (`APPROVED`)
+
+## เป้าหมาย
+เปลี่ยนถนนจาก "เส้นบาง Debug" (Phase 2) ให้เป็น **พื้นผิวถนนจริง** — Ribbon mesh
+กว้างตาม `RoadEdge.width` + Junction pad ที่ Node ที่มีถนน ≥2 เส้นบรรจบ
+(Radius = ครึ่งหนึ่งของ Width เส้นที่กว้างสุด) ยังคง Procedural ล้วน ไม่มี
+External asset.
+
+## สถาปัตยกรรม Group ที่เปลี่ยน
+`Roads` group = เนื้อหาจริง (ribbon + junction, แสดงตลอดเวลา, ไม่ถูก Toggle).
+`RoadsDebug` group (ใหม่) = เส้น Debug เดิมจาก Phase 2, ปิดโดย Default, Toggle
+ด้วยปุ่ม R. รวมกับ `ZonesDebug` เดิม ทำให้ `World` มี 11 top-level groups
+(9 canonical + ZonesDebug + RoadsDebug) — มากกว่าตัวเลข "10" ที่ระบุใน
+Build Spec เพราะตอนนั้น Chat A ยังไม่ทราบว่า Phase 2 มี `ZonesDebug` เป็น
+กลุ่มที่ 10 อยู่แล้ว.
+
+## Module: `src/world/road/RoadMeshBuilder.ts`
+`buildRoadMeshes(graph: RoadGraph): THREE.Group` — 1 ribbon mesh ต่อ edge
+(sample จาก Catmull-Rom spline เดียวกับ Debug renderer) + 1 circular pad
+mesh ต่อ node ที่มี edge ≥2 เส้น. Material: MeshStandardMaterial สี
+pastel tan-gray (`#c9beae`), `receiveShadow = true`.
+
+## Testing
+`RoadMeshBuilder.test.ts` ยืนยัน: ribbon ครอบคลุมตำแหน่ง node ของ edge จริง,
+ความกว้างตรงกับ `width`, junction pad มีอยู่จริงที่ node ที่ควรมี (และไม่มีที่
+Dead-end), รัศมี junction ตรงกับสูตร. `WorldBundle.test.ts` ยืนยันเพิ่มว่า
+`Roads` ไม่มี debug line หลงเหลือ, `RoadsDebug` มี line ครบตาม edge count,
+ปุ่ม R ไม่กระทบ `Roads` อีกต่อไป.
